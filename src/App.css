@@ -1,0 +1,47 @@
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  width: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+@media screen and (min-width: 1024px) {
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* 추가 유틸 클래스 예시 (선택 사항) */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.card {
+  padding: 16px;
+  border-radius: 8px;
+  background: #f9f9f9;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* 예: App.css 또는 index.css */
+@media (max-width: 768px) {
+  .review-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .review-card {
+    margin-bottom: 20px;
+  }
+}
