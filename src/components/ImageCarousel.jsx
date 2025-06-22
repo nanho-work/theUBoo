@@ -3,7 +3,7 @@ import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
-export default function ImageCarousel({ images }) {
+export default function ImageCarousel({ images, onImageClick }) {
   if (!images?.length) return null;
 
     const settings = {
@@ -24,11 +24,13 @@ export default function ImageCarousel({ images }) {
             <img
               src={url}
               alt={`slide-${idx}`}
+              onClick={() => onImageClick?.(url, idx)}
               style={{
                 width: '100%',
                 height: 200,
                 objectFit: 'cover',
                 borderRadius: 8,
+                cursor: 'pointer',
               }}
             />
           </div>

@@ -1,5 +1,6 @@
 // UserReview.jsx
 import { useEffect, useState } from 'react';
+import Modal from 'react-modal';
 import { fetchVisibleReviews } from '@/lib/firebase';
 import ReviewModal from '@/components/ReviewModal';
 import ImageCarousel from '@/components/ImageCarousel';
@@ -8,6 +9,8 @@ export default function UserReview() {
     const [reviews, setReviews] = useState([]);
     const [page, setPage] = useState(1);
     const [showModal, setShowModal] = useState(false);
+    const [selectedImages, setSelectedImages] = useState([]);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const PER_PAGE = 10;
 
     useEffect(() => {
@@ -36,7 +39,13 @@ export default function UserReview() {
                         <div key={id} style={styles.card}>
                             <p style={styles.nickname}>🧑 {r.nickname} | {new Date(r.createdAt).toLocaleDateString()}</p>
                             <p style={styles.content}>{r.content}</p>
-                            <ImageCarousel images={r.images} />
+                            <ImageCarousel
+                              images={r.images}
+                              onImageClick={(url, index) => {
+                                setSelectedImages(r.images);
+                                setSelectedIndex(index);
+                              }}
+                            />
                         </div>
                     ))}
                 </div>
@@ -68,6 +77,34 @@ export default function UserReview() {
                         setShowModal(false);                   // ✅ 모달 닫기
                     }}
                 />
+            )}
+
+            {selectedImages.length > 0 && (
+              <Modal
+                isOpen={true}
+                onRequestClose={() => setSelectedImages([])}
+                style={{
+                  overlay: { backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1000 },
+                  content: {
+                    maxWidth: '80%',
+                    maxHeight: '80%',
+                    margin: 'auto',
+                    padding: 0,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                  },
+                }}
+              >
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                  <img
+                    src={selectedImages[selectedIndex]}
+                    alt={`slide-${selectedIndex}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                  <div style={{ position: 'absolute', top: '50%', left: 20, fontSize: 32, color: '#fff', cursor: 'pointer', userSelect: 'none' }} onClick={() => setSelectedIndex((selectedIndex - 1 + selectedImages.length) % selectedImages.length)}>&lt;</div>
+                  <div style={{ position: 'absolute', top: '50%', right: 20, fontSize: 32, color: '#fff', cursor: 'pointer', userSelect: 'none' }} onClick={() => setSelectedIndex((selectedIndex + 1) % selectedImages.length)}>&gt;</div>
+                </div>
+              </Modal>
             )}
         </div>
     );
@@ -129,16 +166,13 @@ const styles = {
         marginBottom: 8,
         color: '#333',
     },
-    nickname: {
-        fontWeight: 'bold',
-        marginBottom: 8,
-        color: '#333',
-    },
     content: {
         marginBottom: 12,
         lineHeight: 1.6,
         color: '#555',
         whiteSpace: 'pre-line',
+        maxHeight: '9.6em', // 1.6 lineHeight * 6 lines
+        overflowY: 'auto',
     },
     image: {
         width: '100%',

@@ -37,7 +37,9 @@ export default function ReviewManage() {
             background: r.isVisible ? '#fff' : '#f8f8f8',
           }}
         >
-          <div><strong>{r.nickname}</strong> / 비밀번호: {r.password}</div>
+          <div>
+            <strong>{r.nickname}</strong> / {new Date(r.createdAt).toLocaleDateString()}
+          </div>
           <div style={{ margin: '12px 0' }}>{r.content}</div>
 
           {/* 이미지 여러 장 */}

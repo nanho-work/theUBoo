@@ -69,6 +69,7 @@ export default function EventRegister({ onRegistered }) {
         rows={12}
         style={styles.input}
       />
+      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: 6 }}>게시 기간</label>
       <div style={{ display: 'flex', gap: 12 }}>
         <input
           type="date"
@@ -77,6 +78,7 @@ export default function EventRegister({ onRegistered }) {
           onChange={handleChange}
           style={styles.input}
         />
+        <span style={{ alignSelf: 'center' }}> ~ </span>
         <input
           type="date"
           name="endDate"
@@ -86,6 +88,7 @@ export default function EventRegister({ onRegistered }) {
         />
       </div>
 
+      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: 6 }}>이미지</label>
       <input
         type="file"
         accept="image/*"

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { addMenu, fetchMenus, deleteMenu } from '../lib/firebase';
+import { addMenu, fetchMenus, deleteMenu, updateMenu } from '../lib/firebase';
 import { deleteObject } from "firebase/storage";
 
 export default function MenuManage() {
@@ -18,6 +18,7 @@ export default function MenuManage() {
     const [menus, setMenus] = useState({});
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState('');
+    const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
         loadMenus();
@@ -41,23 +42,36 @@ export default function MenuManage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!form.name || !form.price || !form.file) {
+        if (!form.name || !form.price || (!form.file && !editingId)) {
             setMessage('메뉴명, 가격, 이미지를 모두 입력해주세요.');
             return;
         }
 
         setUploading(true);
         try {
-            await addMenu({
-                name: form.name,
-                description: form.description,
-                price: parseInt(form.price, 10),
-                category: form.category,
-                tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean), // ← 중요
-                file: form.file,
-            });
-            setMessage('✅ 메뉴가 등록되었습니다!');
-            setForm({ name: '', description: '', price: '', category: '', file: null });
+            if (editingId) {
+                await updateMenu(editingId, {
+                    name: form.name,
+                    description: form.description,
+                    price: parseInt(form.price, 10),
+                    category: form.category,
+                    tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+                    file: form.file,
+                });
+                setMessage('✅ 메뉴가 수정되었습니다!');
+                setEditingId(null);
+            } else {
+                await addMenu({
+                    name: form.name,
+                    description: form.description,
+                    price: parseInt(form.price, 10),
+                    category: form.category,
+                    tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+                    file: form.file,
+                });
+                setMessage('✅ 메뉴가 등록되었습니다!');
+            }
+            setForm({ name: '', description: '', price: '', category: '', tags: '', file: null });
             setPreviewUrl(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
             loadMenus();
@@ -66,6 +80,22 @@ export default function MenuManage() {
             setMessage('❌ 오류 발생: 메뉴 등록 실패');
         }
         setUploading(false);
+    };
+
+    const handleEdit = (id) => {
+        const menu = menus[id];
+        if (!menu) return;
+        setForm({
+            name: menu.name,
+            description: menu.description,
+            price: menu.price,
+            category: menu.category || '',
+            tags: (menu.tags || []).join(', '),
+            file: null,
+        });
+        setPreviewUrl(menu.imageUrl);
+        setEditingId(id);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleDelete = async (menuId, imageUrl) => {
@@ -106,7 +136,7 @@ export default function MenuManage() {
                             <div
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: 'repeat(5, 1fr)',
+                                    gridTemplateColumns: 'repeat(4, 1fr)',
                                     gap: 16,
                                 }}
                             >
@@ -132,7 +162,27 @@ export default function MenuManage() {
                                             }}
                                         />
                                         <h4 style={{ margin: '8px 0 4px' }}>{menu.name}</h4>
-                                        <p style={{ margin: 0 }}>{menu.description}</p>
+                                        <p
+                                          style={{
+                                            margin: 0,
+                                            overflow: 'hidden',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            textOverflow: 'ellipsis',
+                                          }}
+                                        >
+                                          {menu.description}
+                                        </p>
+                                        <p style={{ margin: '4px 0', color: '#666', fontSize: 14, minHeight: '22px' }}>
+                                          {menu.tags && menu.tags.length > 0
+                                            ? menu.tags.map((tag, index) => (
+                                                <span key={index} style={{ marginRight: 6, background: '#eee', padding: '2px 6px', borderRadius: 4 }}>
+                                                  #{tag}
+                                                </span>
+                                              ))
+                                            : ''}
+                                        </p>
                                         <div
                                             style={{
                                                 display: 'flex',
@@ -141,19 +191,35 @@ export default function MenuManage() {
                                             }}
                                         >
                                             <strong>{menu.price.toLocaleString()}원</strong>
-                                            <button
-                                                onClick={() => handleDelete(id, menu.imageUrl)}
-                                                style={{
-                                                    background: '#e74c3c',
-                                                    color: 'white',
-                                                    padding: '6px 12px',
-                                                    border: 'none',
-                                                    borderRadius: 4,
-                                                    cursor: 'pointer',
-                                                }}
-                                            >
-                                                삭제
-                                            </button>
+                                            <div>
+                                                <button
+                                                    onClick={() => handleEdit(id)}
+                                                    style={{
+                                                        background: '#f39c12',
+                                                        color: 'white',
+                                                        padding: '6px 12px',
+                                                        border: 'none',
+                                                        borderRadius: 4,
+                                                        cursor: 'pointer',
+                                                        marginRight: 8,
+                                                    }}
+                                                >
+                                                    수정
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(id, menu.imageUrl)}
+                                                    style={{
+                                                        background: '#e74c3c',
+                                                        color: 'white',
+                                                        padding: '6px 12px',
+                                                        border: 'none',
+                                                        borderRadius: 4,
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    삭제
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -347,7 +413,7 @@ export default function MenuManage() {
                                 cursor: 'pointer',
                             }}
                         >
-                            {uploading ? '등록 중...' : '메뉴 등록'}
+                            {uploading ? '저장 중...' : editingId ? '메뉴 수정' : '메뉴 등록'}
                         </button>
                     </div>
                 </form>

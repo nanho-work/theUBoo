@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>주소 검색 결과</title>
+  <script>
+    // jusoCallBack 디버깅: postMessage 디버깅 로그 추가, origin 제한
+    window.jusoCallBack = function (
+      roadFullAddr, roadAddrPart1, roadAddrPart2, engAddr,
+      jibunAddr, zipNo, admCd, rnMgtSn, bdMgtSn,
+      detBdNmList, bdNm, bdKdcd, siNm, sggNm, emdNm,
+      liNm, rn, udrtYn, buldMnnm, buldSlno, mtYn, lnbrMnnm,
+      lnbrSlno, emdNo
+    ) {
+      console.log("🏁 jusoCallBack 실행됨!");
+      console.log("📦 전달할 데이터:", { zipNo, roadAddr: roadAddrPart1 });
+
+      // Debug: log before postMessage
+      if (window.opener) {
+        console.log("🧩 opener 존재함. 메시지 전송 시작");
+        try {
+          // Use "*" as targetOrigin for now (for testing/cross-origin)
+          window.opener.postMessage({
+            zipNo,
+            roadAddr: roadAddrPart1
+          }, "*");
+          setTimeout(() => {
+            console.log("🧨 창 닫기 실행됨");
+            window.close();
+          }, 300);
+        } catch (e) {
+          console.error("🔥 postMessage 실패:", e);
+        }
+      } else {
+        console.log("🚫 window.opener가 null임");
+        alert("부모 창이 존재하지 않아 창을 닫을 수 없습니다.");
+      }
+      // Debug: after postMessage/jusoCallBack
+      console.log("✅ jusoCallBack 함수 종료");
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      console.log("🌐 현재 URL:", window.location.href);
+      console.log("✅ juso_callback.html 로드됨");
+
+      const params = new URLSearchParams(window.location.search);
+      const zipNo = params.get("zipNo");
+      const roadAddrPart1 = params.get("roadAddrPart1");
+
+      console.log("📦 파라미터 zipNo:", zipNo);
+      console.log("📦 파라미터 roadAddrPart1:", roadAddrPart1);
+
+      // Check for both parameters and non-empty string values
+      if (typeof zipNo === "string" && zipNo.trim() !== "" &&
+          typeof roadAddrPart1 === "string" && roadAddrPart1.trim() !== "") {
+        console.log("📬 테스트용 jusoCallBack 자동 실행 시작");
+        jusoCallBack(
+          '', roadAddrPart1, '', '', '', zipNo, '', '', '',
+          '', '', '', '', '', '',
+          '', '', '', '', '', '',
+          '', ''
+        );
+      } else {
+        let reason = [];
+        if (!zipNo || typeof zipNo !== "string" || zipNo.trim() === "") reason.push("zipNo 없음/빈값");
+        if (!roadAddrPart1 || typeof roadAddrPart1 !== "string" || roadAddrPart1.trim() === "") reason.push("roadAddrPart1 없음/빈값");
+        console.warn("⚠️ URL 파라미터 부족 -", reason.join(", "));
+      }
+    });
+  </script>
+</head>
+<body>
+  <p>주소를 선택하셨다면 창이 자동으로 닫힙니다.</p>
+</body>
+</html>

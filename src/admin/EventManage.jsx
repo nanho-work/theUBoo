@@ -1,6 +1,6 @@
 // src/admin/EventManage.jsx
 import { useEffect, useState } from 'react';
-import { fetchEvents, getEventDetail } from '@/lib/firebase';
+import { fetchEvents, getEventDetail, deleteEvent } from '@/lib/firebase';
 import EventRegister from './EventRegister';
 import EventDetailModal from '@/components/EventDetailModal';
 
@@ -29,6 +29,13 @@ export default function EventManage() {
     const handleCloseDetail = () => {
         setDetail(null);
         setViewId(null);
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("정말 삭제하시겠습니까?")) return;
+        await deleteEvent(id);
+        const updated = await fetchEvents();
+        setEvents(updated);
     };
 
     return (
@@ -61,6 +68,7 @@ export default function EventManage() {
                             <td style={styles.td}>{ev.views || 0}</td>
                             <td style={styles.td}>
                                 <button onClick={() => handleView(id)} style={styles.viewBtn}>보기</button>
+                                <button onClick={() => handleDelete(id)} style={styles.deleteBtn}>삭제</button>
                             </td>
                         </tr>
                     ))}
@@ -107,6 +115,15 @@ const styles = {
         borderRadius: 4,
         cursor: 'pointer',
     },
+    deleteBtn: {
+        background: '#e74c3c',
+        color: '#fff',
+        padding: '4px 8px',
+        border: 'none',
+        borderRadius: 4,
+        cursor: 'pointer',
+        marginLeft: 8,
+    },
     modalOverlay: {
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -124,7 +141,7 @@ const styles = {
     },
     closeBtn: {
         marginTop: 16,
-        backgroundColor: '#ccc',
+        backgroundColor: '#888',
         border: 'none',
         borderRadius: 6,
         padding: 10,

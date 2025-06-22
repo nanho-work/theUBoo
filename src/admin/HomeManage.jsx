@@ -5,8 +5,12 @@ import { db } from '@/lib/firebase';
 
 export default function HomeManage() {
   const [slides, setSlides] = useState({});
-  const [previews, setPreviews] = useState([null, null, null, null]); // ✅ 로컬 미리보기
-  const fileInputRefs = useRef([null, null, null, null]);
+  const [previews, setPreviews] = useState([...Array(10).fill(null)]); // ✅ 로컬 미리보기
+  const fileInputRefs = useRef([...Array(10).fill(null)]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newSlotIndex, setNewSlotIndex] = useState(null);
+  // State to temporarily store the selected slide image before upload
+  const [selectedSlideImage, setSelectedSlideImage] = useState(null);
 
   // 🔄 Storage 이미지 로드
   const loadSlides = async () => {
@@ -35,7 +39,8 @@ export default function HomeManage() {
         ...prev,
         [slot]: { imageUrl },
       }));
-      fileInputRefs.current[slot].value = "";
+      if (fileInputRefs.current[slot]) fileInputRefs.current[slot].value = "";
+      setIsModalOpen(false);
     } catch (err) {
       console.error(err);
       alert('업로드 실패');
@@ -62,12 +67,9 @@ export default function HomeManage() {
   const handleFileChange = (slot, e) => {
     const file = e.target.files[0];
     if (file) {
-      const previewUrl = URL.createObjectURL(file);
-      setPreviews((prev) => {
-        const updated = [...prev];
-        updated[slot] = previewUrl;
-        return updated;
-      });
+      // Do not show preview before confirmation
+      // Store the file in state, don't upload yet
+      setSelectedSlideImage(file);
     }
   };
 
@@ -77,13 +79,15 @@ export default function HomeManage() {
 
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) {
-      const previewUrl = URL.createObjectURL(droppedFile);
-      setPreviews((prev) => {
-        const updated = [...prev];
-        updated[slot] = previewUrl;
-        return updated;
-      });
-      handleUpload(droppedFile, slot);
+      // Do not show preview before confirmation
+      // Set file input value for UX purposes
+      if (fileInputRefs.current[slot]) {
+        const dt = new DataTransfer();
+        dt.items.add(droppedFile);
+        fileInputRefs.current[slot].files = dt.files;
+      }
+      // Store the file in state, don't upload yet
+      setSelectedSlideImage(droppedFile);
     }
   };
 
@@ -92,9 +96,17 @@ export default function HomeManage() {
     fileInputRefs.current[slot]?.click();
   };
 
+  const handleUploadAll = () => {
+    fileInputRefs.current.forEach((inputRef, index) => {
+      const file = inputRef?.files?.[0];
+      if (file) {
+        handleUpload(file, index);
+      }
+    });
+  };
+
   // 매장 정보 
   const [storeForm, setStoreForm] = useState({
-    zipcode: '',
     address: '',
     latitude: '',
     longitude: '',
@@ -102,16 +114,60 @@ export default function HomeManage() {
   });
 
 
+
   const [storeMessage, setStoreMessage] = useState('');
 
   useEffect(() => {
     fetchStoreInfo().then((data) => {
       if (data) {
-        setStoreForm(data);
+        setStoreForm({
+          address: data.address || '',
+          latitude: data.latitude || '',
+          longitude: data.longitude || '',
+          description: data.description || '',
+        });
       }
     });
   }, []);
 
+  useEffect(() => {
+    console.log("📥 postMessage 리스너 등록됨");
+    const handleMessage = (event) => {
+      // Check origin and source, and ensure data shape
+      if (
+        event.origin === window.location.origin &&
+        (event.source === window || event.source === window.opener) &&
+        event.data &&
+        typeof event.data === 'object' &&
+        'roadAddr' in event.data
+      ) {
+        console.log("✅ 주소 수신됨:", event.data);
+        setStoreForm((prev) => ({
+          ...prev,
+          address: event.data.roadAddr
+        }));
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  async function fetchGeoInfo(address) {
+    // 예시: Kakao 로컬 API 사용 (실제 API 키와 엔드포인트 필요)
+    // 여기서는 fetch 사용 예시만 작성
+    const apiKey = 'YOUR_KAKAO_API_KEY';
+    const res = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`, {
+      headers: { Authorization: `KakaoAK ${apiKey}` }
+    });
+    const data = await res.json();
+    if (data.documents && data.documents.length > 0) {
+      const doc = data.documents[0];
+      const lat = doc.address.y || '';
+      const lng = doc.address.x || '';
+      return { lat, lng };
+    }
+    return { lat: '', lng: '' };
+  }
 
   const handleStoreChange = (e) => {
     const { name, value } = e.target;
@@ -120,17 +176,16 @@ export default function HomeManage() {
 
   const handleStoreSave = async () => {
     try {
-      await saveStoreInfo(storeForm);
-      setStoreMessage('✅ 저장 완료!');
-
-      // 🔁 입력폼 초기화
-      setStoreForm({
-        zipcode: '',
-        address: '',
-        latitude: '',
-        longitude: '',
-        description: '',
-      });
+      // Only include the relevant fields (no zipCode)
+      const updatedForm = {
+        address: storeForm.address,
+        latitude: storeForm.latitude,
+        longitude: storeForm.longitude,
+        description: storeForm.description,
+      };
+      await saveStoreInfo(updatedForm);
+      alert('✅ 저장 완료!');
+      setStoreMessage('');
     } catch (err) {
       console.error(err);
       setStoreMessage('❌ 저장 실패');
@@ -141,36 +196,36 @@ export default function HomeManage() {
   const [storeImages, setStoreImages] = useState([]); // 여러 이미지 저장
   const [selectedStoreImage, setSelectedStoreImage] = useState(null);
   const handleStoreFileChange = (e) => {
-  const file = e.target.files[0];
-  if (file) setSelectedStoreImage(file);
-};
+    const file = e.target.files[0];
+    if (file) setSelectedStoreImage(file);
+  };
 
   useEffect(() => {
-  fetchStoreImages()
-    .then((urls) => setStoreImages(urls))
-    .catch((err) => {
-      console.error(err);
-      alert("이미지를 불러오는 데 실패했습니다.");
-    });
-}, []);
+    fetchStoreImages()
+      .then((urls) => setStoreImages(urls))
+      .catch((err) => {
+        console.error(err);
+        alert("이미지를 불러오는 데 실패했습니다.");
+      });
+  }, []);
 
   // 매장 이미지 등록
   const handleUploadStoreImage = async () => {
-  if (!selectedStoreImage) {
-    alert("파일을 선택해주세요.");
-    return;
-  }
+    if (!selectedStoreImage) {
+      alert("파일을 선택해주세요.");
+      return;
+    }
 
-  try {
-    const url = await uploadStoreImage(selectedStoreImage);
-    setStoreImages((prev) => [...prev, url]);
-    setSelectedStoreImage(null);
-    alert("✅ 업로드 완료!");
-  } catch (err) {
-    console.error(err);
-    alert("❌ 업로드 실패");
-  }
-};
+    try {
+      const url = await uploadStoreImage(selectedStoreImage);
+      setStoreImages((prev) => [...prev, url]);
+      setSelectedStoreImage(null);
+      alert("✅ 업로드 완료!");
+    } catch (err) {
+      console.error(err);
+      alert("❌ 업로드 실패");
+    }
+  };
 
   // 매장 이미지 삭제 
   const handleDeleteStoreImage = async (url) => {
@@ -183,154 +238,91 @@ export default function HomeManage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <h2 style={{ marginBottom: 24 }}>홈화면 슬라이드 이미지 관리</h2>
-      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-        {[0, 1, 2, 3].map((slot) => (
-          <div
-            key={slot}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => handleDrop(e, slot)}
-            onClick={() => handleUploadClick(slot)}
-            style={{
-              width: 240,
-              height: 240,
-              border: '2px dashed #ccc',
-              borderRadius: 8,
-              padding: 12,
-              textAlign: 'center',
-              background: '#f9f9f9',
-              color: '#666',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              position: 'relative',
-            }}
-          >
-            {(previews[slot] || slides[slot]?.imageUrl) ? (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h2>홈화면 슬라이드 이미지 관리</h2>
+        <button
+          onClick={() => {
+            setIsModalOpen(true);
+            const firstEmptyIndex = previews.findIndex((v, i) => !previews[i] && !slides[i]?.imageUrl);
+            setNewSlotIndex(firstEmptyIndex);
+          }}
+          disabled={Object.keys(slides).length >= 10}
+          style={{
+            padding: '8px 16px',
+            background: Object.keys(slides).length >= 10 ? '#ccc' : '#3498db',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            cursor: Object.keys(slides).length >= 10 ? 'not-allowed' : 'pointer',
+          }}
+        >
+          이미지 추가
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+        {[...Array(10).keys()].map((slot) => (
+          (previews[slot] || slides[slot]?.imageUrl) && (
+            <div key={slot} style={{ position: 'relative' }}>
               <img
                 src={previews[slot] || slides[slot]?.imageUrl}
-                alt={`슬라이드 ${slot + 1}`}
-                style={{
-                  width: '100%',
-                  height: 140,
-                  objectFit: 'cover',
-                  borderRadius: 4,
-                }}
+                alt={`slide-${slot}`}
+                style={{ width: 220, height: 220, borderRadius: 8, objectFit: 'cover' }}
               />
-            ) : (
-              <div
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#aaa',
-                }}
-              >
-                드래그 또는 클릭으로 업로드
-              </div>
-            )}
-
-            <div style={{ width: '100%', marginTop: 12 }}>
               <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const file = fileInputRefs.current[slot]?.files?.[0];
-                  if (file) {
-                    handleUpload(file, slot);
-                  } else {
-                    alert("이미지를 먼저 선택해주세요.");
-                  }
-                }}
-                disabled={!!slides[slot]?.imageUrl} // ✅ 이미지가 이미 등록돼 있으면 비활성화
+                onClick={() => handleDelete(slot)}
                 style={{
-                  width: '100%',
-                  padding: 6,
-                  marginBottom: 6,
-                  background: slides[slot]?.imageUrl ? '#ccc' : '#3498db',
-                  color: 'white',
+                  position: 'absolute',
+                  top: 6,
+                  right: 6,
+                  width: 24,
+                  height: 24,
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  color: '#fff',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: slides[slot]?.imageUrl ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: 16,
+                  lineHeight: '24px',
+                  textAlign: 'center',
+                  padding: 0,
+                  cursor: 'pointer',
                 }}
               >
-                등록
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(slot);
-                }}
-                disabled={!slides[slot]?.imageUrl}
-                style={{
-                  width: '100%',
-                  padding: 6,
-                  background: slides[slot]?.imageUrl ? '#e74c3c' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: slides[slot]?.imageUrl ? 'pointer' : 'not-allowed',
-                }}
-              >
-                삭제
+                ×
               </button>
             </div>
-
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              ref={(el) => (fileInputRefs.current[slot] = el)}
-              onChange={(e) => handleFileChange(slot, e)}
-            />
-          </div>
+          )
         ))}
       </div>
       {/* ───── 오시는 길/매장 소개 입력 폼 ───── */}
       <div style={{ marginTop: 48 }}>
         <h2>🧭 오시는 길 / 매장 소개</h2>
-
-        <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
-          <input
-            type="text"
-            name="zipcode"
-            value={storeForm.zipcode}
-            placeholder="우편번호"
-            onChange={handleStoreChange}
-            style={{ flex: 1, padding: 8 }}
-          />
+        {/* 주소 입력 */}
+        <div style={{ marginBottom: 8, display: 'flex', gap: 12 }}>
           <input
             type="text"
             name="address"
             value={storeForm.address}
             placeholder="도로명 주소"
             onChange={handleStoreChange}
-            style={{ flex: 3, padding: 8 }}
+            style={{ flex: 1, padding: 8 }}
+          />
+          <input
+            type="text"
+            placeholder="위도, 경도 (쉼표로 구분)"
+            value={`${storeForm.latitude}, ${storeForm.longitude}`}
+            onChange={(e) => {
+              const [lat, lng] = e.target.value.split(',').map(str => str.trim());
+              setStoreForm(prev => ({
+                ...prev,
+                latitude: lat || '',
+                longitude: lng || '',
+              }));
+            }}
+            style={{ flex: 1, padding: 8 }}
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
-          <input
-            type="text"
-            name="latitude"
-            value={storeForm.latitude}
-            placeholder="위도"
-            onChange={handleStoreChange}
-            style={{ flex: 1, padding: 8 }}
-          />
-          <input
-            type="text"
-            name="longitude"
-            value={storeForm.longitude}
-            placeholder="경도"
-            onChange={handleStoreChange}
-            style={{ flex: 1, padding: 8 }}
-          />
-        </div>
 
         <textarea
           name="description"
@@ -362,28 +354,27 @@ export default function HomeManage() {
         )}
       </div>
       <div style={{ marginTop: 32 }}>
-        <h3>🏪 매장 대표 사진</h3>
-
-        {storeImages.length < 5 && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type="file" accept="image/*" onChange={handleStoreFileChange} />
-            <button
-              onClick={handleUploadStoreImage}
-              disabled={!selectedStoreImage || storeImages.length >= 5}
-              style={{
-                padding: '6px 12px',
-                background: selectedStoreImage ? '#3498db' : '#ccc',
-                color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: selectedStoreImage ? 'pointer' : 'not-allowed',
-              }}
-            >
-              등록
-            </button>
-          </div>
-        )}
-
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>🏪 매장 대표 사진</h2>
+          <button
+            onClick={() => {
+              setIsModalOpen(true);
+              setNewSlotIndex(null); // null means store image modal
+            }}
+            disabled={storeImages.length >= 10}
+            style={{
+              padding: '8px 16px',
+              background: storeImages.length >= 10 ? '#ccc' : '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: storeImages.length >= 10 ? 'not-allowed' : 'pointer',
+              marginLeft: 12,
+            }}
+          >
+            이미지 추가
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
           {storeImages.map((url, idx) => (
             <div key={idx} style={{ position: 'relative' }}>
@@ -414,6 +405,151 @@ export default function HomeManage() {
           ))}
         </div>
       </div>
+      {isModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 1000 }}>
+          <div style={{ background: '#fff', width: 400, margin: '10% auto', padding: 24, borderRadius: 8, position: 'relative' }}>
+            {newSlotIndex === null ? (
+              <>
+                <h3>매장 이미지 등록</h3>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    handleStoreFileChange(e);
+                  }}
+                />
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      setSelectedStoreImage(file);
+                    }
+                  }}
+                  style={{
+                    border: '2px dashed #ccc',
+                    padding: 20,
+                    marginTop: 16,
+                    textAlign: 'center',
+                    borderRadius: 8,
+                  }}
+                >
+                  또는 이곳에 드래그하여 업로드
+                </div>
+                <div style={{ textAlign: 'center', marginTop: 16 }}>
+                  <button
+                    onClick={async () => {
+                      // Guard: 최대 10개 제한
+                      if (storeImages.length >= 10) {
+                        alert("이미지는 최대 10개까지만 등록할 수 있습니다.");
+                        return;
+                      }
+                      if (selectedStoreImage) {
+                        try {
+                          const url = await uploadStoreImage(selectedStoreImage);
+                          setStoreImages((prev) => [...prev, url]);
+                        } catch (err) {
+                          alert("❌ 업로드 실패");
+                        }
+                        setSelectedStoreImage(null);
+                        setIsModalOpen(false);
+                      }
+                    }}
+                    disabled={!selectedStoreImage}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: 14,
+                      background: selectedStoreImage ? '#3498db' : '#ccc',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: selectedStoreImage ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    등록
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3>이미지 추가</h3>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(newSlotIndex, e)}
+                  ref={(el) => (fileInputRefs.current[newSlotIndex] = el)}
+                />
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      // Do not show preview before confirmation
+                      if (fileInputRefs.current[newSlotIndex]) {
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        fileInputRefs.current[newSlotIndex].files = dt.files;
+                      }
+                      setSelectedSlideImage(file);
+                    }
+                  }}
+                  style={{
+                    border: '2px dashed #ccc',
+                    padding: 20,
+                    marginTop: 16,
+                    textAlign: 'center',
+                    borderRadius: 8,
+                  }}
+                >
+                  또는 이곳에 드래그하여 업로드
+                </div>
+                <div style={{ textAlign: 'center', marginTop: 16 }}>
+                  <button
+                    onClick={async () => {
+                      if (selectedSlideImage) {
+                        await handleUpload(selectedSlideImage, newSlotIndex);
+                        setSelectedSlideImage(null);
+                      }
+                    }}
+                    disabled={!selectedSlideImage}
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: 14,
+                      background: selectedSlideImage ? '#3498db' : '#ccc',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: selectedSlideImage ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    등록
+                  </button>
+                </div>
+              </>
+            )}
+            <button
+              onClick={() => {
+                setIsModalOpen(false);
+                setSelectedSlideImage(null);
+                setSelectedStoreImage(null);
+                if (newSlotIndex !== null) {
+                  // Also clear preview for that slot if user cancels before 등록
+                  setPreviews((prev) => {
+                    const updated = [...prev];
+                    updated[newSlotIndex] = null;
+                    return updated;
+                  });
+                }
+              }}
+              style={{ position: 'absolute', top: 8, right: 8 }}
+            >
+              X
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -56,6 +56,34 @@ export async function addMenu({ file, name, description, price, category, tags }
   }
 }
 
+// 🔸 메뉴 수정
+export async function updateMenu(menuId, { file, name, description, price, category, tags }) {
+  const menuRef = dbRef(db, `menus/${menuId}`);
+
+  let imageUrl = null;
+  if (file) {
+    const filename = `menus/${Date.now()}_${file.name}`;
+    const imageRef = storageRef(storage, filename);
+    await uploadBytes(imageRef, file);
+    imageUrl = await getDownloadURL(imageRef);
+  }
+
+  const updateData = {
+    name,
+    description,
+    price,
+    category,
+    tags,
+    updatedAt: Date.now(),
+  };
+
+  if (imageUrl) {
+    updateData.imageUrl = imageUrl;
+  }
+
+  await update(menuRef, updateData);
+}
+
 //
 // 🔸 메뉴 전체 조회
 //
@@ -185,10 +213,9 @@ export async function fetchSlideImages() {
 
 
 // 매장 정보 저장 함수
-export async function saveStoreInfo({ zipcode, address, latitude, longitude, description }) {
+export async function saveStoreInfo({ address, latitude, longitude, description }) {
   const ref = dbRef(db, 'storeInfo');
   await set(ref, {
-    zipcode,
     address,
     latitude,
     longitude,
@@ -286,4 +313,27 @@ export async function incrementEventViews(eventId) {
   const snapshot = await get(eventRef);
   const current = snapshot.exists() ? snapshot.val() : 0;
   await set(eventRef, current + 1);
+}
+
+// 🔸 후기 수정
+export async function updateReview(reviewId, updatedFields) {
+  const reviewRef = dbRef(db, `reviews/${reviewId}`);
+  await update(reviewRef, {
+    ...updatedFields,
+    updatedAt: Date.now(),
+  });
+}
+
+// 이벤트 수정
+export async function updateEvent(eventId, updatedData) {
+  const eventRef = dbRef(db, `events/${eventId}`);
+  await update(eventRef, {
+    ...updatedData,
+    updatedAt: Date.now(),
+  });
+}
+
+// 🔸 이벤트 삭제
+export async function deleteEvent(eventId) {
+  await remove(dbRef(db, `events/${eventId}`));
 }

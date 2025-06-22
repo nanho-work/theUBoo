@@ -66,12 +66,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '12px 24px',
+    padding: '14px 32px',
+    gap: 32,
   },
   logoSection: {
     display: 'flex',
     alignItems: 'center',
-    marginRight: 48,
     gap: 8,
   },
   logoText: {
