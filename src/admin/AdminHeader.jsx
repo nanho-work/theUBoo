@@ -36,7 +36,7 @@ export default function AdminHeader({ tab, setTab }) {
             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src="/logo.png" alt="로고" style={{ height: 28 }} />
+                <img src="/theUBoo/logo.png" alt="로고" style={{ height: 28 }} />
                 <strong style={{ fontSize: '18px', color: 'white' }}>TheUboo Admin</strong>
             </div>
             <nav>

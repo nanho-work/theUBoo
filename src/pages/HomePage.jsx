@@ -111,7 +111,7 @@ export default function HomePage() {
                             <Marker position={[parseFloat(storeInfo.latitude), parseFloat(storeInfo.longitude)]}>
                                 <Popup>
                                     <div style={{ textAlign: 'center' }}>
-                                        <img src="/logo.png" alt="로고" style={{ width: 40, height: 40, marginBottom: 6 }} />
+                                        <img src="/theUBoo/logo.png" alt="로고" style={{ width: 40, height: 40, marginBottom: 6 }} />
                                         <div>더 유부 매장 위치</div>
                                         <div style={{ fontSize: 13, color: '#555' }}>{storeInfo.address}</div>
                                     </div>

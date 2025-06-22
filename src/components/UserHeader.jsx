@@ -25,7 +25,7 @@ export default function UserHeader() {
       <div style={styles.navWrapper}>
         <div style={styles.logoSection}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <img src="/logo.png" alt="TheUboo" style={{ height: 32 }} />
+            <img src="/theUBoo/logo.png" alt="TheUboo" style={{ height: 32 }} />
             <strong style={styles.logoText}>THE 유부</strong>
           </Link>
         </div>
