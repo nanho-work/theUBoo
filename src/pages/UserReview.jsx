@@ -101,8 +101,8 @@ export default function UserReview() {
                     alt={`slide-${selectedIndex}`}
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
-                  <div style={{ position: 'absolute', top: '50%', left: 20, fontSize: 32, color: '#fff', cursor: 'pointer', userSelect: 'none' }} onClick={() => setSelectedIndex((selectedIndex - 1 + selectedImages.length) % selectedImages.length)}>&lt;</div>
-                  <div style={{ position: 'absolute', top: '50%', right: 20, fontSize: 32, color: '#fff', cursor: 'pointer', userSelect: 'none' }} onClick={() => setSelectedIndex((selectedIndex + 1) % selectedImages.length)}>&gt;</div>
+                  <div style={{ position: 'absolute', top: '50%', left: 20, fontSize: 32, color: '#333', cursor: 'pointer', userSelect: 'none' }} onClick={() => setSelectedIndex((selectedIndex - 1 + selectedImages.length) % selectedImages.length)}>&lt;</div>
+                  <div style={{ position: 'absolute', top: '50%', right: 20, fontSize: 32, color: '#333', cursor: 'pointer', userSelect: 'none' }} onClick={() => setSelectedIndex((selectedIndex + 1) % selectedImages.length)}>&gt;</div>
                 </div>
               </Modal>
             )}
