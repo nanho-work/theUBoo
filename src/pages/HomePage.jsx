@@ -4,6 +4,22 @@ import { fetchSlideImages, fetchStoreInfo, fetchStoreImages } from '@/lib/fireba
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
+import logo from '@/assets/logo.png';
+
+// Leaflet default icon fix for Vite/React environments
+import L from 'leaflet';
+import markerIcon2x from '@/assets/leaflet/marker-icon-2x.png';
+import markerIcon from '@/assets/leaflet/marker-icon.png';
+import markerShadow from '@/assets/leaflet/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: markerIcon2x,
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
+});
+
 export default function HomePage() {
     const [slides, setSlides] = useState({});
     const [storeInfo, setStoreInfo] = useState(null);
@@ -111,7 +127,7 @@ export default function HomePage() {
                             <Marker position={[parseFloat(storeInfo.latitude), parseFloat(storeInfo.longitude)]}>
                                 <Popup>
                                     <div style={{ textAlign: 'center' }}>
-                                        <img src="/theUBoo/logo.png" alt="로고" style={{ width: 40, height: 40, marginBottom: 6 }} />
+                                        <img src={logo} alt="로고" style={{ width: 40, height: 40, marginBottom: 6 }} />
                                         <div>더 유부 매장 위치</div>
                                         <div style={{ fontSize: 13, color: '#555' }}>{storeInfo.address}</div>
                                     </div>
