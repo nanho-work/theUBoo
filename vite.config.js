@@ -11,4 +11,12 @@ export default defineConfig({
       '@user': path.resolve(__dirname, './components/user'), // ⬅️ 이거 추가
     },
   },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html')
+      }
+    }
+  }
 });
