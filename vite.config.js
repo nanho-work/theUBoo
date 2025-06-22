@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path'; // ⬅️ 꼭 추가
 
 export default defineConfig({
+  base: '/theUBoo/',
   plugins: [react()],
   resolve: {
     alias: {

@@ -1,5 +1,5 @@
 // ✅ 외부 라이브러리
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 
@@ -21,7 +21,7 @@ import EventDetail from './components/EventDetail';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/theUBoo">
       <Routes>
         {/* 사용자용 루트 페이지 */}
         <Route path="/" element={<UserLayout><Home /></UserLayout>} />
@@ -40,6 +40,8 @@ function App() {
             <AdminPage />
           </ProtectedAdminRoute>
         } />
+        {/* fallback route for unmatched paths */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );
